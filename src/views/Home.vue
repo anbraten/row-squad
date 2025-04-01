@@ -47,22 +47,25 @@
                   <div class="flex items-center gap-2">
                     <span class="text-2xl">{{ boat.type === '8+' ? '🚤' : '🛶' }}</span>
                     <span class="font-medium">{{ boat.type }}</span>
+                    <span v-if="isParticipatingInBoat(boat)" class="text-green-600 font-medium ml-4">You're in! 🎉</span>
                   </div>
                   <button v-if="!isParticipatingInBoat(boat)"
                           @click="joinBoat(session.id, boat.id)"
                           class="btn btn-primary text-sm">
                     Join Boat
                   </button>
-                  <span v-else class="text-green-600 font-medium">You're in! 🎉</span>
-                </div>
+                  <button v-else
+                    @click="leaveBoat(session.id, boat.id)"
+                    class="btn btn-primary text-sm">
+                    Leave Boat
+                  </button>
+            </div>
 
                 <div class="flex flex-wrap gap-2">
-                  <div v-for="participant in boat.participants" :key="participant.userId"
+                  <div v-for="participant in boat.participants" :key="participant"
                        class="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1">
-                    <Avatar :user="participant.userId" />
-                    <span class="text-sm">{{ getUserName(participant.userId) }}</span>
-                    <span v-if="participant.status === 'maybe'"
-                          class="text-xs text-gray-500">(maybe)</span>
+                    <Avatar :user="participant" />
+                    <span class="text-sm">{{ getUserName(participant) }}</span>
                   </div>
                 </div>
               </div>
@@ -199,13 +202,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue';
-import { format } from 'date-fns';
-import { useSessionsStore } from '~/stores/sessions';
-import { mockUsers, mockSlots, currentUser } from '~/mock/data';
-import type { Boat } from '~/types';
-import Avatar from '~/components/Avatar.vue';
+import { ref, computed } from "vue";
+import {
+	Dialog,
+	DialogPanel,
+	DialogTitle,
+	TransitionRoot,
+} from "@headlessui/vue";
+import { format } from "date-fns";
+import { useSessionsStore } from "~/stores/sessions";
+import { mockUsers, mockSlots, currentUser } from "~/mock/data";
+import type { Boat } from "~/types";
+import Avatar from "~/components/Avatar.vue";
 
 const sessionsStore = useSessionsStore();
 const sessionsByDate = computed(() => sessionsStore.sessionsByDate);
@@ -213,66 +221,72 @@ const slots = mockSlots;
 
 const showNewSession = ref(false);
 const showNewBoat = ref(false);
-const selectedSessionId = ref('');
-const newBoatType = ref<Boat['type']>('4x');
+const selectedSessionId = ref("");
+const newBoatType = ref<Boat["type"]>("4x");
 const newComments = ref<Record<string, string>>({});
 
 const newSessionData = ref({
-  date: new Date().toISOString().split('T')[0],
-  slotId: slots[0].id,
-  type: 'casual' as const,
+	date: new Date().toISOString().split("T")[0],
+	slotId: slots[0].id,
+	type: "casual" as const,
 });
 
 const formatDate = (date: string) => {
-  return format(new Date(date), 'EEEE, MMMM d');
+	return format(new Date(date), "EEEE, MMMM d");
 };
 
 const formatTime = (slotId: string) => {
-  const slot = slots.find(s => s.id === slotId);
-  return slot ? `${slot.startTime} - ${slot.endTime}` : '';
+	const slot = slots.find((s) => s.id === slotId);
+	return slot ? `${slot.startTime} - ${slot.endTime}` : "";
 };
 
 const formatTimestamp = (timestamp: string) => {
-  return format(new Date(timestamp), 'HH:mm');
+	return format(new Date(timestamp), "HH:mm");
 };
 
 const getUserName = (userId: string) => {
-  return mockUsers.find(u => u.id === userId)?.name || 'Unknown';
+	return mockUsers.find((u) => u.id === userId)?.name || "Unknown";
 };
 
 const isParticipatingInBoat = (boat: Boat) => {
-  return boat.participants.some(p => p.userId === currentUser.id);
+	return boat.participants.some((p) => p === currentUser.id);
 };
 
 const showNewBoatModal = (sessionId: string) => {
-  selectedSessionId.value = sessionId;
-  showNewBoat.value = true;
+	selectedSessionId.value = sessionId;
+	showNewBoat.value = true;
 };
 
 const createSession = () => {
-  sessionsStore.addSession({
-    ...newSessionData.value,
-    supervisor: currentUser.id,
-  });
-  showNewSession.value = false;
+	sessionsStore.addSession({
+		...newSessionData.value,
+		supervisor: currentUser.id,
+	});
+	showNewSession.value = false;
 };
 
 const createBoat = () => {
-  const boat = sessionsStore.addBoat(selectedSessionId.value, newBoatType.value);
-  if (boat)
-    sessionsStore.joinBoat(selectedSessionId.value, boat.id);
-  showNewBoat.value = false;
+	const boat = sessionsStore.addBoat(
+		selectedSessionId.value,
+		newBoatType.value,
+	);
+	if (boat) sessionsStore.joinBoat(selectedSessionId.value, boat.id);
+	showNewBoat.value = false;
 };
 
 const joinBoat = (sessionId: string, boatId: string) => {
-  sessionsStore.joinBoat(sessionId, boatId);
+	sessionsStore.joinBoat(sessionId, boatId);
 };
 
-const addComment = (sessionId: string) => {
-  const text = newComments.value[sessionId];
-  if (!text?.trim()) return;
+function leaveBoat(sessionId: string, boatId: string) {
+	sessionsStore.leaveBoat(sessionId, boatId);
+}
 
-  sessionsStore.addComment(sessionId, text);
-  newComments.value[sessionId] = '';
+const addComment = (sessionId: string) => {
+	const text = newComments.value[sessionId];
+	if (!text?.trim()) return;
+
+	sessionsStore.addComment(sessionId, text);
+	newComments.value[sessionId] = "";
 };
 </script>

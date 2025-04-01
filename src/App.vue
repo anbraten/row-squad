@@ -18,6 +18,6 @@
 </template>
 
 <script setup lang="ts">
-import Avatar from '~/components/Avatar.vue';
-import { currentUser } from './mock/data';
+import Avatar from "~/components/Avatar.vue";
+import { currentUser } from "./mock/data";
 </script>
